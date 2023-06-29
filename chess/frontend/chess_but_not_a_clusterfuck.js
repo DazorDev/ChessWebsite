@@ -5,6 +5,28 @@ class DatabaseInput {
         this.userID = user;
         this.currentSearch = null;
         this.match = null;
+        this.chessBoard = null;
+        this.setupLeaveButton();
+    }
+
+    setupLeaveButton() {
+        const button = document.getElementById('leaveButton');
+        button.onclick = (ev) => {
+            const data = {
+                id: this.match.id,
+            }
+            fetch("../backend/backend.php/?method=disconnect", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data)
+            });
+            this.match = null;
+            this.chessBoard.unload();
+            this.chessBoard.loadPieces();
+            this.searchForMatch();
+        };
     }
 
     isMoveValid(piece, position) {
@@ -44,16 +66,18 @@ class DatabaseInput {
     }
 
     searchForMatch() {
-        //console.log("staring search")
+        document.getElementById('state').innerHTML = "Searching..."
         this.currentSearch = setInterval(() => {
             //console.log("trying to connect")
             this.checkForMatch()
                 .then(data => {
+                    console.log(data);
                     //console.log(data)
-                    if (!data.match) {
+                    if (data.match == null) {
                         //console.log("no match found")
                         return;
                     }
+                    document.getElementById('state').innerHTML = "Found"
                     //console.log("found match", data.match);
                     this.match = data.match;
                     clearInterval(this.currentSearch);
@@ -66,6 +90,7 @@ class DatabaseInput {
             user: this.userID,
             match: this.match
         };
+        console.log(data)
         return fetch("../backend/backend.php/?method=connect", {
             method: 'POST',
             headers: {
@@ -74,6 +99,7 @@ class DatabaseInput {
             body: JSON.stringify(data)
         }).then(response => response.json())
     }
+
 
 }
 
@@ -103,10 +129,21 @@ class Piece {
 class ChessBoard {
 
     constructor(databaseInput) {
-        this.pieces = createStandardBoard();
-        this.pieceObjects = [];
         this.squares = document.querySelectorAll('.chessboard .square');
         this.databaseInput = databaseInput;
+        this.databaseInput.chessBoard = this;
+        this.shouldUpdate = true;
+        this.loadPieces();
+    }
+
+    loadPieces() {
+        this.pieces = createStandardBoard();
+        dynamicallyLoad(this);
+    }
+
+    unload() {
+        this.pieces.forEach(piece => piece.obj.remove());
+        this.pieces = [];
     }
 
     //Literally Monad
@@ -115,6 +152,12 @@ class ChessBoard {
         const data = this.databaseInput.updateBoard();
         if (!data) return;
         data.then(d => {
+            console.log(d.state)
+            console.log(d.winner)
+            console.log(document.getElementById("state").innterHTML);
+            if (d.state === "game_over") document.getElementById("state").innerHTML = "Game is over \r\n Winner is : " + d.winner;
+            if (d.state === "playing") document.getElementById("state").innerHTML = "Playing";
+            if (d.currentPlayer) document.getElementById("player").innerHTML = "Current Player : " + d.currentPlayer;
             const jsonData = JSON.parse(d.gameData);
             //console.log(jsonData);
             //console.log(this.pieces);
@@ -298,7 +341,6 @@ function createStandardBoard() {
 
 function init() {
     const chessBoard = new ChessBoard(new DatabaseInput());
-    dynamicallyLoad(chessBoard);
     chessBoard.update();
     chessBoard.databaseInput.searchForMatch();
     setInterval(() => chessBoard.update(), 1000);

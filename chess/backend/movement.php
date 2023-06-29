@@ -2,7 +2,20 @@
 
 require_once "chessboard.php";
 
-function isTurn($user) {
+function isTurn($game, $user) {
+    return getLastTurnUser($game) != $user;
+}
+
+function isOver($game) {
+    $arr = getGameState($game);
+    return $arr['running'] == 0;
+}
+
+function isPieceCorrectColor($game, $user, $piece) {
+    $state = getGameState($game);
+    //Crappy fix for conversion between front and backend
+    $correctColor = $state['white'] == $user ? "black" : "white";
+    return $correctColor == $piece->color;
 }
 
 function capturePiece($pieceID, $color, &$board) {
@@ -14,9 +27,6 @@ function capturePiece($pieceID, $color, &$board) {
     }
 }
 
-function checkIfChecked($user, $board) {
-}
-
 function checkIfPlaceIsFilled($position, $board) {
     return getPieceFromPos($board, $position) != null;
 }
@@ -25,10 +35,10 @@ function canCapture($piece1, $piece2) {
     return $piece1->color != $piece2->color;
 }
 
-function checkIfUnCheck($position, $board) {
-}
-
-function isValidMove($piece, $position, &$board) {
+function isValidMove($piece, $position, &$board, $gameID, $userID) {
+    if (!isTurn($gameID, $userID)) return false;
+    if (isOver($gameID)) return false;
+    if (!isPieceCorrectColor($gameID, $userID, $piece)) return;
     switch ($piece->type) {
         case 'pawn':
             return pawnMove($piece, $position, $board);
@@ -80,23 +90,27 @@ function moveToPawn($piece, $move, &$board) {
     return false;
 }
 
-function moveToKing($piece, $move, &$board) {
-    if (willPutInCheck($piece, $move, $board)) return false;
-    if (checkIfPlaceIsFilled($move, $board)) {
-        $capturePiece = getPieceFromPos($board, $move);
-        if (canCapture($piece, $capturePiece)) {
-            capturePiece($capturePiece->id, $capturePiece->color, $board);
-            return true;
+function bishopMove($piece, $move, &$board) {
+    $smallestMove = new Position($move->x, $move->y);
+    $tempMove = new Position($move->x, $move->y);
+    $isPossible = false;
+    for ($x = 0; $x != 8; $x++) {
+        $tempMove->x = $piece->x < $move->x ? $tempMove->x - 1 : $tempMove->x + 1;
+        $tempMove->y = $piece->y < $move->y ? $tempMove->y - 1 : $tempMove->y + 1;
+        if (checkIfPlaceIsFilled($tempMove, $board)) {
+            if (canCapture($piece, getPieceFromPos($board, $tempMove))) {
+                $smallestMove->x = $tempMove->x;
+                $smallestMove->y = $tempMove->y;
+            }
+        }
+        if ($tempMove->x == $piece->x && $tempMove->y == $piece->y) {
+            $isPossible = true;
+            break;
         };
-        return false;
     }
-    return true;
-}
-
-function willPutInCheck($piece, $move, $board) {
-}
-
-function bishopMove($piece, $move, $board) {
+    if (!$isPossible) return false;
+    if ($smallestMove->x == $move->x && $smallestMove->y == $move->y) return moveTo($piece, $move, $board);
+    return false;
 }
 
 function queenMove($piece, $move, &$board) {
@@ -106,22 +120,18 @@ function queenMove($piece, $move, &$board) {
 function kingMove($piece, $move, &$board) {
     if ($piece->x - 1 != $move->x && $piece->x != $move->x && $piece->x + 1 != $move->x) return false;
     if ($piece->y - 1 != $move->y && $piece->y != $move->y && $piece->y + 1 != $move->y) return false;
-    return true;
-    if (checkIfPlaceIsFilled($move, $board)) {
-        $pieceOnMove = getPieceFromPos($board, $move);
-        if (canCapture($piece, $pieceOnMove)) {
-            capturePiece($piece->id, $piece->color, $board);
-            return !willPutInCheck($piece, $move, $board);
-        }
-        return false;
-    }
-    return !willPutInCheck($piece, $move, $board);
+    return moveTo($piece, $move, $board);
 }
 
 function pawnMove($piece, $move, &$board) {
     if ($piece->color == 'black') {
         if ($piece->y == 6) {
-            if ($move->y == $piece->y - 1 || $move->y == $piece->y - 2) return !checkIfPlaceIsFilled($move, $board);
+            if ($move->y == $piece->y - 1 || $move->y == $piece->y - 2) {
+                if ($move->x == $piece->x) return !checkIfPlaceIsFilled($move, $board);
+                if ($piece->x + 1 == $move->x || $piece->x - 1 == $move->x) {
+                    return moveToPawn($piece, $move, $board);
+                }
+            }
             return false;
         }
         if ($piece->y - 1 != $move->y) return false;
@@ -135,7 +145,12 @@ function pawnMove($piece, $move, &$board) {
     }
 
     if ($piece->y == 1) {
-        if ($move->y == $piece->y + 1 || $move->y == $piece->y + 2) return !checkIfPlaceIsFilled($move, $board);
+        if ($move->y == $piece->y + 1 || $move->y == $piece->y + 2) {
+            if ($move->x == $piece->x) return !checkIfPlaceIsFilled($move, $board);
+            if ($piece->x + 1 == $move->x || $piece->x - 1 == $move->x) {
+                return moveToPawn($piece, $move, $board);
+            }
+        }
         return false;
     }
     if ($piece->y + 1 != $move->y) return false;
@@ -199,15 +214,4 @@ function rookMove($piece, $move, &$board) {
     }
     if ($smallestMove->y == $move->y) return moveTo($piece, $move, $board);
     return false;
-}
-
-function canMove($user, $piece, $position, $board) {
-    if (!isTurn($user)) return false;
-    if (checkIfPlaceIsFilled($position, $board)) if (!canCapture($piece, getPieceFromPos($board, $position))) return false;
-    if (!isValidMove($piece, $position, $board)) return false;
-    if (checkIfChecked($user, $board)) {
-        if (!checkIfUnCheck($position, $board)) return false;
-        return false;
-    }
-    return true;
 }

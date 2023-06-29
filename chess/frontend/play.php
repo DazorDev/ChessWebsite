@@ -18,7 +18,8 @@ if (!isset($_SESSION["username"])) {
 
 <body>
     <div class="play-container">
-        <h2>Play Chess</h2>
+        <h2 id='state'>Play Chess</h2>
+        <h1 id='player'>Current Player : </h1>
         <div class="chessboard">
             <?php
             function generateSquare($attribute, $x, $y) {
@@ -39,6 +40,7 @@ if (!isset($_SESSION["username"])) {
             ?>
         </div>
     </div>
+    <button id='leaveButton'>Leave Match</button>
 </body>
 
 </html>

@@ -7,7 +7,7 @@ function searchMatch($id) {
 }
 
 function searchCreatedMatch($user) {
-    return "SELECT * FROM game WHERE white = '$user' OR black = '$user' AND running = '1' ORDER BY id DESC LIMIT 1";
+    return "SELECT * FROM game WHERE (white = '$user' OR black = '$user') AND running = '1' ORDER BY id DESC LIMIT 1";
 }
 
 function createMatch($user1, $user2) {
@@ -115,4 +115,10 @@ function startSearch($data) {
     }
     putMatch($user, $otherUser['id']);
     echo json_encode(array('success' => true, 'task' => "Created Match with other user"));
+}
+
+function endMatch($data) {
+    global $connection;
+    $matchID = $data['id'];
+    mysqli_query($connection, "UPDATE game SET running = 0 WHERE id = '$matchID'");
 }

@@ -33,7 +33,7 @@ function move() {
     $data = getJsonBody();
     $gameData = getGameData($data['match']);
     $piece = getPiece($gameData, $data['id'], $data['color']);
-    if (!isValidMove($piece, new Position(intval($data['move'][0]), intval($data['move'][1])), $gameData)) {
+    if (!isValidMove($piece, new Position(intval($data['move'][0]), intval($data['move'][1])), $gameData, $data['match'], $data['user'])) {
         echo json_encode(array('success' => true, 'move' => false, getPiece($gameData, $data['id'], $data['color']), new Position($data['move'][0], $data['move'][1]), $gameData));
         return;
     }
@@ -41,6 +41,10 @@ function move() {
     $piece->y = intval($data['move'][1]);
     updateGameData($data['user'], $data['match'], $gameData);
     echo json_encode(array('success' => true, 'move' => true));
+}
+
+function disconnect() {
+    endMatch(getJsonBody());
 }
 
 function main() {
@@ -59,6 +63,9 @@ function main() {
             break;
         case 'move':
             move();
+            break;
+        case 'disconnect':
+            disconnect();
             break;
     }
     mysqli_close($connection);
