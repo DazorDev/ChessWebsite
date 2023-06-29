@@ -123,23 +123,34 @@ class ChessBoard {
                 for (let piece of this.pieces) {
                     if (piece.color != checkPiece.color) continue;
                     if (piece.id != checkPiece.id) continue;
-                    updated.push({ col: piece.color, id: piece.id });
+                    updated.push(piece);
                     this.squares[checkPiece.y * 8 + checkPiece.x].appendChild(piece.obj);
                     piece.x = checkPiece.x;
                     piece.y = checkPiece.y;
                     break;
                 }
             }
+            /*
             for (let i = 0; i < this.pieces.length; i++) {
                 let found = false;
                 for (let data of updated) {
-                    if (this.pieces[i].color == data.color && this.pieces[i].id == data.id) found = true;
+                    if (this.pieces[i].color == data.color && this.pieces[i].id == data.id) {
+                        //console.log(data)
+                        found = true;
+                        break;
+                    }
                 }
                 if (found) continue;
                 console.log(this.pieces[i]);
                 this.pieces[i].obj.remove();
                 this.pieces.splice(i, 1);
             }
+            */
+            this.pieces.filter(e => {
+                if (updated.includes(e)) return true;
+                e.obj.remove();
+                return false;
+            });
         })
         return;
     }

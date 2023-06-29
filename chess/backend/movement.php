@@ -45,6 +45,17 @@ function isValidMove($piece, $position, &$board) {
     }
 }
 
+function couldMoveTo($piece, $move, &$board) {
+    if (checkIfPlaceIsFilled($move, $board)) {
+        $capturePiece = getPieceFromPos($board, $move);
+        if (canCapture($piece, $capturePiece)) {
+            return true;
+        };
+        return false;
+    }
+    return true;
+}
+
 function moveTo($piece, $move, &$board) {
     if (checkIfPlaceIsFilled($move, $board)) {
         $capturePiece = getPieceFromPos($board, $move);
@@ -151,29 +162,43 @@ function knightMove($piece, $move, &$board) {
 }
 
 function rookMove($piece, $move, &$board) {
+    $smallestMove = new Position($move->x, $move->y);
+    $tempMove = new Position($move->x, $move->y);
     if ($move->x != $piece->x && $move->y != $piece->y) return;
     if ($move->x != $piece->x) {
-        $smallestMove = $move->x;
         for ($x = $move->x; $x != $piece->x; $x = $x > $piece->x ? $x - 1 : $x + 1) {
-            if (checkIfPlaceIsFilled($x, $board)) {
-                /*if (canCapture($piece, getPiece($x, $board))) {
-                    $smallestMove = $x;
-                }*/
-                $smallestMove = $x - 1;
+            $tempMove->x = $x;
+            if (checkIfPlaceIsFilled($tempMove, $board)) {
+                if (canCapture($piece, getPieceFromPos($board, $tempMove))) {
+                    $smallestMove->x = $x;
+                    continue;
+                }
+                if ($x > $piece->x) {
+                    $smallestMove->x = $x - 1;
+                    continue;
+                }
+                $smallestMove->x = $x + 1;
             }
         }
-        return $smallestMove == $move->x;
+        if ($smallestMove->x == $move->x) return moveTo($piece, $move, $board);
+        return false;
     }
-    $smallestMove = $move->y;
     for ($y = $move->y; $y != $piece->y; $y = $y > $piece->y ? $y - 1 : $y + 1) {
-        if (checkIfPlaceIsFilled($y, $board)) {
-            if (canCapture($piece, getPiece($piece->x, $y, $board))) {
-                $smallestMove = $y;
+        $tempMove->y = $y;
+        if (checkIfPlaceIsFilled($tempMove, $board)) {
+            if (canCapture($piece, getPieceFromPos($board, $tempMove))) {
+                $smallestMove->y = $y;
+                continue;
             }
-            $smallestMove = $y > $piece->y ? $y - 1 : $y + 1;
+            if ($y > $piece->y) {
+                $smallestMove->y = $y - 1;
+                continue;
+            }
+            $smallestMove->y = $y + 1;
         }
     }
-    return $smallestMove == $move->x;
+    if ($smallestMove->y == $move->y) return moveTo($piece, $move, $board);
+    return false;
 }
 
 function canMove($user, $piece, $position, $board) {

@@ -33,7 +33,7 @@ function move() {
     $data = getJsonBody();
     $gameData = getGameData($data['match']);
     $piece = getPiece($gameData, $data['id'], $data['color']);
-    if (!isValidMove($piece, new Position($data['move'][0], $data['move'][1]), $gameData)) {
+    if (!isValidMove($piece, new Position(intval($data['move'][0]), intval($data['move'][1])), $gameData)) {
         echo json_encode(array('success' => true, 'move' => false, getPiece($gameData, $data['id'], $data['color']), new Position($data['move'][0], $data['move'][1]), $gameData));
         return;
     }
